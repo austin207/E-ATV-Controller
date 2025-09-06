@@ -36,26 +36,24 @@ class ArrowControls extends StatelessWidget {
                 : [Colors.grey[700]!, Colors.grey[900]!],
           ),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: isPressed ? [
-            BoxShadow(
-              color: Colors.blue.withValues(alpha: 0.6),
-              spreadRadius: 2,
-              blurRadius: 8,
-            )
-          ] : [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              spreadRadius: 1,
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            )
-          ],
+          boxShadow: isPressed
+              ? [
+                  BoxShadow(
+                    color: Colors.blue.withValues(alpha: 0.6),
+                    spreadRadius: 2,
+                    blurRadius: 8,
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    spreadRadius: 1,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: 28,
-        ),
+        child: Icon(icon, color: Colors.white, size: 28),
       ),
     );
   }
@@ -63,7 +61,9 @@ class ArrowControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 40.0), // Moved down more
+      padding: const EdgeInsets.only(
+        top: 0,
+      ), // Remove extra top padding since it's centered
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -74,7 +74,8 @@ class ArrowControls extends StatelessWidget {
 
           // Left and Right Arrows Row
           Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment:
+                MainAxisAlignment.center, // Ensure center alignment
             children: [
               _buildArrowButton('left', Icons.keyboard_arrow_left),
               const SizedBox(width: 70),
@@ -86,12 +87,8 @@ class ArrowControls extends StatelessWidget {
 
           // Down Arrow
           _buildArrowButton('down', Icons.keyboard_arrow_down),
-
-          // REMOVED: Direction indicator text and container
         ],
       ),
     );
   }
-
-// Removed _getDirectionText() method since it's no longer needed
 }

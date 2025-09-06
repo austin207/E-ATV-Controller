@@ -20,119 +20,126 @@ class ControllerScreen extends StatelessWidget {
             // Status Bar
             const StatusBar(),
 
-            // Combined Speed Control + Action Buttons
-            // Combined Speed Control + Action Buttons (Optimized)
+            // Speed Control (compact at top)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), // Reduced padding
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.grey[900],
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Speed Slider
-                  Consumer<ControllerProvider>(
-                    builder: (context, controller, child) {
-                      return SpeedSlider(
-                        speed: controller.speed,
-                        effectiveSpeed: controller.effectiveSpeed,
-                        onSpeedChanged: controller.setSpeed,
-                      );
-                    },
-                  ),
-
-                  // Action Buttons Row (No SizedBox - direct placement)
-                  Consumer2<ControllerProvider, ConnectionProvider>(
-                    builder: (context, controller, connection, child) {
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 4), // Minimal spacing
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            // STOP Button
-                            _buildCompactButton(
-                              onPressed: controller.emergencyStop,
-                              color: Colors.red,
-                              label: 'STOP',
-                              icon: Icons.stop,
-                            ),
-
-                            // LIGHTS Button
-                            _buildCompactButton(
-                              onPressed: controller.toggleLights,
-                              color: controller.lightsOn
-                                  ? Colors.yellow[700]!
-                                  : Colors.grey[700]!,
-                              label: 'LIGHTS',
-                              icon: controller.lightsOn
-                                  ? Icons.lightbulb
-                                  : Icons.lightbulb_outline,
-                            ),
-
-                            // HORN Button
-                            _buildCompactButton(
-                              onPressed: () {
-                                print('Horn pressed!');
-                                if (connection.selected != null) {
-                                  connection.sendCommand('HORN:1');
-                                }
-                              },
-                              color: Colors.blue,
-                              label: 'HORN',
-                              icon: Icons.campaign,
-                            ),
-
-                            // EXIT Button
-                            _buildCompactButton(
-                              onPressed: connection.disconnect,
-                              color: Colors.grey[700]!,
-                              label: 'EXIT',
-                              icon: Icons.power_settings_new,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
+              child: Consumer<ControllerProvider>(
+                builder: (context, controller, child) {
+                  return SpeedSlider(
+                    speed: controller.speed,
+                    effectiveSpeed: controller.effectiveSpeed,
+                    onSpeedChanged: controller.setSpeed,
+                  );
+                },
               ),
             ),
 
-
-            // Main Control Area - Arrows at bottom left, Boost on right
+            // Main Control Area
             Expanded(
               child: Stack(
                 children: [
-                  // Arrow Controls - Positioned at bottom left
+                  // Action Buttons Column - Left Side
+                  // Action Buttons Grid - Left Side (2x2 format)
                   Positioned(
-                    bottom: 20,
                     left: 20,
-                    child: Consumer<ControllerProvider>(
-                      builder: (context, controller, child) {
-                        return ArrowControls(
-                          arrowStates: controller.arrowStates,
-                          onDirectionChanged: controller.setArrowState,
+                    bottom: 100,
+                    child: Consumer2<ControllerProvider, ConnectionProvider>(
+                      builder: (context, controller, connection, child) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Top row: STOP and LIGHTS
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildActionButton(
+                                  label: 'STOP',
+                                  icon: Icons.stop,
+                                  color: Colors.red,
+                                  onPressed: controller.emergencyStop,
+                                ),
+                                const SizedBox(width: 12),
+                                _buildActionButton(
+                                  label: 'LIGHTS',
+                                  icon: controller.lightsOn
+                                      ? Icons.lightbulb
+                                      : Icons.lightbulb_outline,
+                                  color: controller.lightsOn
+                                      ? Colors.yellow[700]!
+                                      : Colors.grey[700]!,
+                                  onPressed: controller.toggleLights,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            // Bottom row: HORN and EXIT
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildActionButton(
+                                  label: 'HORN',
+                                  icon: Icons.campaign,
+                                  color: Colors.blue,
+                                  onPressed: () {
+                                    print('Horn pressed!');
+                                    if (connection.selected != null) {
+                                      connection.sendCommand('HORN:1');
+                                    }
+                                  },
+                                ),
+                                const SizedBox(width: 12),
+                                _buildActionButton(
+                                  label: 'EXIT',
+                                  icon: Icons.power_settings_new,
+                                  color: Colors.grey[700]!,
+                                  onPressed: connection.disconnect,
+                                ),
+                              ],
+                            ),
+                          ],
                         );
                       },
                     ),
                   ),
 
-                  // Boost Button - Positioned at center right
+
+                  // Arrow Controls - Moved down to avoid slider overlap
+                  Positioned(
+                    bottom: 20, // Decreased from 40 to 20 (moves DOWN)
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: SizedBox(
+                        width: 220,
+                        child: Consumer<ControllerProvider>(
+                          builder: (context, controller, child) {
+                            return ArrowControls(
+                              arrowStates: controller.arrowStates,
+                              onDirectionChanged: controller.setArrowState,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+
+
+                  // Boost Button - Right Side
                   Positioned(
                     right: 30,
-                    top: 50,
-                    bottom: 50,
+                    bottom: 100,
                     child: Consumer<ControllerProvider>(
                       builder: (context, controller, child) {
-                        return Center(
-                          child: BoostButton(
-                            capacitorCharge: controller.capacitorCharge,
-                            canBoost: controller.canBoost,
-                            isActive: controller.boostActive,
-                            onBoostChanged: controller.setBoost,
-                          ),
+                        return BoostButton(
+                          capacitorCharge: controller.capacitorCharge,
+                          canBoost: controller.canBoost,
+                          isActive: controller.boostActive,
+                          onBoostChanged: controller.setBoost,
                         );
                       },
                     ),
@@ -146,19 +153,19 @@ class ControllerScreen extends StatelessWidget {
     );
   }
 
-  // Helper method for compact buttons
-  Widget _buildCompactButton({
-    required VoidCallback onPressed,
-    required Color color,
+  // Helper method for compact action buttons
+  Widget _buildActionButton({
     required String label,
     required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
   }) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        minimumSize: const Size(70, 36),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        minimumSize: const Size(65, 45),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -166,13 +173,13 @@ class ControllerScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 16),
+          Icon(icon, color: Colors.white, size: 18),
           const SizedBox(height: 2),
           Text(
             label,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: FontWeight.bold,
             ),
           ),

@@ -41,7 +41,7 @@ class SpeedSlider extends StatelessWidget {
 
         // Simple Slider with track only
         SizedBox(
-          height: 30,
+          height: 10,
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: isBoosted ? Colors.orange : Colors.blue,

@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';  // Add this import
 import 'package:provider/provider.dart';
 import 'providers/connection_provider.dart';
 import 'providers/controller_provider.dart';
 import 'screens/connection_screen.dart';
 import 'screens/controller_screen.dart';
 
-void main() {
+void main() async {
+  // Ensure Flutter binding is initialized
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Lock orientation to landscape only
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ConnectionProvider()),
         ChangeNotifierProvider(create: (_) => ControllerProvider()),
       ],
-      child: MyApp(),
+      child: const MyApp(),
     ),
   );
 }
@@ -27,7 +37,6 @@ class MyApp extends StatelessWidget {
       theme: ThemeData.dark(),
       home: Consumer2<ConnectionProvider, ControllerProvider>(
         builder: (context, connectionProvider, controllerProvider, child) {
-          // Link providers when connected
           if (connectionProvider.selected?.isConnected == true) {
             connectionProvider.linkControllerProvider(controllerProvider);
             return const ControllerScreen();
