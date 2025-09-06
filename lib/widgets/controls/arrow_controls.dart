@@ -62,64 +62,36 @@ class ArrowControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Up Arrow
-        _buildArrowButton('up', Icons.keyboard_arrow_up),
+    return Padding(
+      padding: const EdgeInsets.only(top: 40.0), // Moved down more
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Up Arrow
+          _buildArrowButton('up', Icons.keyboard_arrow_up),
 
-        const SizedBox(height: 10),
+          const SizedBox(height: 5),
 
-        // Left and Right Arrows
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildArrowButton('left', Icons.keyboard_arrow_left),
-            const SizedBox(width: 10),
-            _buildArrowButton('right', Icons.keyboard_arrow_right),
-          ],
-        ),
-
-        const SizedBox(height: 10),
-
-        // Down Arrow
-        _buildArrowButton('down', Icons.keyboard_arrow_down),
-
-        // Direction Indicator
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.grey[800],
-            borderRadius: BorderRadius.circular(16),
+          // Left and Right Arrows Row
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildArrowButton('left', Icons.keyboard_arrow_left),
+              const SizedBox(width: 70),
+              _buildArrowButton('right', Icons.keyboard_arrow_right),
+            ],
           ),
-          child: Text(
-            _getDirectionText(),
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
+
+          const SizedBox(height: 5),
+
+          // Down Arrow
+          _buildArrowButton('down', Icons.keyboard_arrow_down),
+
+          // REMOVED: Direction indicator text and container
+        ],
+      ),
     );
   }
 
-  String _getDirectionText() {
-    List<String> activeDirections = [];
-    arrowStates.forEach((direction, isActive) {
-      if (isActive) {
-        activeDirections.add(direction.toUpperCase());
-      }
-    });
-
-    if (activeDirections.isEmpty) {
-      return 'STOP';
-    } else if (activeDirections.length == 1) {
-      return activeDirections.first;
-    } else {
-      return activeDirections.join(' + ');
-    }
-  }
+// Removed _getDirectionText() method since it's no longer needed
 }
