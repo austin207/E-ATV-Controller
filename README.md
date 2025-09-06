@@ -49,21 +49,18 @@ A professional Flutter application for controlling RC vehicles via ESP32/ESP8266
 
 ### Installation
 1. Clone the repository:
-   ```
+```
 git clone https://github.com/yourusername/rc-controller-flutter.git
 cd rc-controller-flutter
-   ```
-
+```
 2. Install dependencies:
-   ```
+```
 flutter pub get
-   ```
-
+```
 3. Run the app:
-   ```
+```
 flutter run
-   ```
-
+```
 ## 🔌 Hardware Setup
 
 ### Wiring Diagram
