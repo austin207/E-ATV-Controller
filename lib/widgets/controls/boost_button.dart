@@ -1,85 +1,116 @@
 import 'package:flutter/material.dart';
+import 'package:vibration/vibration.dart';
 
-class BoostButton extends StatefulWidget {
-  final Function(bool isBoosting) onBoostChanged;
+class BoostButton extends StatelessWidget {
   final double capacitorCharge;
+  final bool canBoost;
+  final bool isActive;
+  final Function(bool isActive) onBoostChanged;
 
-  BoostButton({
-    required this.onBoostChanged,
+  const BoostButton({
+    Key? key,
     required this.capacitorCharge,
-  });
+    required this.canBoost,
+    required this.isActive,
+    required this.onBoostChanged,
+  }) : super(key: key);
 
-  @override
-  _BoostButtonState createState() => _BoostButtonState();
-}
-
-class _BoostButtonState extends State<BoostButton> {
-  bool isBoosting = false;
+  void _hapticFeedback() async {
+    if (await Vibration.hasVibrator() ?? false) {
+      Vibration.vibrate(duration: isActive ? 100 : 50);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    bool canBoost = widget.capacitorCharge > 20.0;
-
     return GestureDetector(
       onTapDown: canBoost ? (_) {
-        setState(() {
-          isBoosting = true;
-        });
-        widget.onBoostChanged(true);
+        _hapticFeedback();
+        onBoostChanged(true);
       } : null,
       onTapUp: (_) {
-        setState(() {
-          isBoosting = false;
-        });
-        widget.onBoostChanged(false);
+        onBoostChanged(false);
       },
       onTapCancel: () {
-        setState(() {
-          isBoosting = false;
-        });
-        widget.onBoostChanged(false);
+        onBoostChanged(false);
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         width: 120,
         height: 120,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
-            colors: isBoosting
-                ? [Colors.red, Colors.yellow]
+            colors: isActive
+                ? [Colors.red[400]!, Colors.yellow[600]!]
                 : canBoost
-                ? [Colors.orange, Colors.red[800]!]
-                : [Colors.grey, Colors.grey[800]!],
+                ? [Colors.orange[600]!, Colors.red[700]!]
+                : [Colors.grey[600]!, Colors.grey[800]!],
           ),
-          boxShadow: isBoosting ? [
+          boxShadow: isActive ? [
             BoxShadow(
-              color: Colors.red.withOpacity(0.7),
+              color: Colors.red.withValues(alpha: 0.7),
               spreadRadius: 4,
               blurRadius: 12,
             )
-          ] : null,
+          ] : [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              spreadRadius: 2,
+              blurRadius: 6,
+            )
+          ],
         ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'BOOST',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+        child: Stack(
+          children: [
+            // Capacitor charge ring
+            Center(
+              child: SizedBox(
+                width: 110,
+                height: 110,
+                child: CircularProgressIndicator(
+                  value: capacitorCharge / 100.0,
+                  strokeWidth: 4,
+                  backgroundColor: Colors.white24,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    capacitorCharge > 20 ? Colors.white : Colors.red,
+                  ),
                 ),
               ),
-              Text(
-                '${widget.capacitorCharge.toInt()}%',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                ),
+            ),
+            // Button content
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'BOOST',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${capacitorCharge.toInt()}%',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (!canBoost)
+                    const Text(
+                      'CHARGING',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10,
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

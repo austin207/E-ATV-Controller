@@ -1,8 +1,8 @@
-// lib/providers/connection_provider.dart
 import 'package:flutter/material.dart';
 import '../models/esp32_device.dart';
 import '../services/ble_service.dart';
 import '../services/wifi_service.dart';
+import 'controller_provider.dart';
 
 class ConnectionProvider extends ChangeNotifier {
   bool useBLE = true;
@@ -15,8 +15,8 @@ class ConnectionProvider extends ChangeNotifier {
   int batteryLevel = 85;
   int capacitorCharge = 100;
 
-  final _bleService = BLEService();
-  final _wifiService = WiFiService();
+  final BLEService _bleService = BLEService();
+  final WiFiService _wifiService = WiFiService();
 
   void toggleConnectionType(bool bleSelected) {
     useBLE = bleSelected;
@@ -79,6 +79,13 @@ class ConnectionProvider extends ChangeNotifier {
         await _bleService.sendCommand(selected!.id, command);
       }
       // Add WiFi command sending here if needed
+    }
+  }
+
+  // Add this method to connect the controller provider
+  void linkControllerProvider(ControllerProvider controllerProvider) {
+    if (selected != null && selected!.isConnected) {
+      controllerProvider.setConnectedDevice(selected!.id);
     }
   }
 }

@@ -1,4 +1,3 @@
-// lib/services/ble_service.dart
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../models/esp32_device.dart';
 import 'dart:async';
@@ -22,12 +21,12 @@ class BLEService {
 
       // Start scanning
       await FlutterBluePlus.startScan(
-        timeout: Duration(seconds: 4),
+        timeout: const Duration(seconds: 4),
         androidUsesFineLocation: true,
       );
 
       // Wait for scan to complete
-      await Future.delayed(Duration(seconds: 4));
+      await Future.delayed(const Duration(seconds: 4));
 
       // Stop scanning
       await FlutterBluePlus.stopScan();
@@ -81,13 +80,13 @@ class BLEService {
       // Connect to device
       await targetDevice.connect(
         autoConnect: false,
-        timeout: Duration(seconds: 10),
+        timeout: const Duration(seconds: 10),
       );
 
       // Check connection state
       bool isConnected = await targetDevice.connectionState
           .where((state) => state == BluetoothConnectionState.connected)
-          .timeout(Duration(seconds: 10))
+          .timeout(const Duration(seconds: 10))
           .first
           .then((_) => true)
           .catchError((_) => false);

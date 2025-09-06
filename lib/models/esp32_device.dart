@@ -1,9 +1,9 @@
 enum DeviceType { ble, wifi }
 
 class ESP32Device {
-  final String id;      //BLE MAC or SSID
-  final String name;    // Name
-  final int rssi;       //signal strength
+  final String id;           // BLE MAC or WiFi SSID
+  final String name;         // Display name
+  final int rssi;            // Signal strength (BLE) or quality (WiFi)
   final DeviceType type;
   bool isConnected;
 
