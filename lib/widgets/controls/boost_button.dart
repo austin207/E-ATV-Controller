@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:vibration/vibration.dart';
 
 class BoostButton extends StatelessWidget {
   final double capacitorCharge;
@@ -16,9 +15,6 @@ class BoostButton extends StatelessWidget {
   }) : super(key: key);
 
   void _hapticFeedback() async {
-    if (await Vibration.hasVibrator() ?? false) {
-      Vibration.vibrate(duration: isActive ? 100 : 50);
-    }
   }
 
   @override

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:vibration/vibration.dart';
 
 class ArrowControls extends StatelessWidget {
   final Map<String, bool> arrowStates;
@@ -60,9 +59,6 @@ class ArrowControls extends StatelessWidget {
   }
 
   void _hapticFeedback() async {
-    if (await Vibration.hasVibrator() ?? false) {
-      Vibration.vibrate(duration: 50);
-    }
   }
 
   @override
