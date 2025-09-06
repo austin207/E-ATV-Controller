@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Add this import
 import 'package:provider/provider.dart';
 import '../providers/connection_provider.dart';
 import '../providers/controller_provider.dart';
@@ -7,153 +8,199 @@ import '../widgets/controls/boost_button.dart';
 import '../widgets/controls/speed_slider.dart';
 import '../widgets/common/status_bar.dart';
 
-class ControllerScreen extends StatelessWidget {
+class ControllerScreen extends StatefulWidget {
   const ControllerScreen({Key? key}) : super(key: key);
 
   @override
+  State<ControllerScreen> createState() => _ControllerScreenState();
+}
+
+class _ControllerScreenState extends State<ControllerScreen> {
+  DateTime? _lastBackPress;
+
+  @override
+  void initState() {
+    super.initState();
+    // Lock to landscape orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  @override
+  void dispose() {
+    // Reset to allow all orientations when leaving controller
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Status Bar
-            const StatusBar(),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
 
-            // Speed Control (compact at top)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Consumer<ControllerProvider>(
-                builder: (context, controller, child) {
-                  return SpeedSlider(
-                    speed: controller.speed,
-                    effectiveSpeed: controller.effectiveSpeed,
-                    onSpeedChanged: controller.setSpeed,
-                  );
-                },
-              ),
+        DateTime now = DateTime.now();
+        if (_lastBackPress == null ||
+            now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+          _lastBackPress = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit'),
+              duration: Duration(seconds: 2),
             ),
+          );
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Status Bar
+              const StatusBar(),
 
-            // Main Control Area
-            Expanded(
-              child: Stack(
-                children: [
-                  // Action Buttons Column - Left Side
-                  // Action Buttons Grid - Left Side (2x2 format)
-                  Positioned(
-                    left: 20,
-                    bottom: 100,
-                    child: Consumer2<ControllerProvider, ConnectionProvider>(
-                      builder: (context, controller, connection, child) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Top row: STOP and LIGHTS
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildActionButton(
-                                  label: 'STOP',
-                                  icon: Icons.stop,
-                                  color: Colors.red,
-                                  onPressed: controller.emergencyStop,
-                                ),
-                                const SizedBox(width: 12),
-                                _buildActionButton(
-                                  label: 'LIGHTS',
-                                  icon: controller.lightsOn
-                                      ? Icons.lightbulb
-                                      : Icons.lightbulb_outline,
-                                  color: controller.lightsOn
-                                      ? Colors.yellow[700]!
-                                      : Colors.grey[700]!,
-                                  onPressed: controller.toggleLights,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            // Bottom row: HORN and EXIT
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildActionButton(
-                                  label: 'HORN',
-                                  icon: Icons.campaign,
-                                  color: Colors.blue,
-                                  onPressed: () {
-                                    print('Horn pressed!');
-                                    if (connection.selected != null) {
-                                      connection.sendCommand('HORN:1');
-                                    }
-                                  },
-                                ),
-                                const SizedBox(width: 12),
-                                _buildActionButton(
-                                  label: 'EXIT',
-                                  icon: Icons.power_settings_new,
-                                  color: Colors.grey[700]!,
-                                  onPressed: connection.disconnect,
-                                ),
-                              ],
-                            ),
-                          ],
-                        );
-                      },
+              // Speed Control (compact at top)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Consumer<ControllerProvider>(
+                  builder: (context, controller, child) {
+                    return SpeedSlider(
+                      speed: controller.speed,
+                      effectiveSpeed: controller.effectiveSpeed,
+                      onSpeedChanged: controller.setSpeed,
+                    );
+                  },
+                ),
+              ),
+
+              // Main Control Area
+              Expanded(
+                child: Stack(
+                  children: [
+                    // Action Buttons Grid - Left Side (2x2 format)
+                    Positioned(
+                      left: 20,
+                      bottom: 100,
+                      child: Consumer2<ControllerProvider, ConnectionProvider>(
+                        builder: (context, controller, connection, child) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Top row: STOP and LIGHTS
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildActionButton(
+                                    label: 'STOP',
+                                    icon: Icons.stop,
+                                    color: Colors.red,
+                                    onPressed: controller.emergencyStop,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _buildActionButton(
+                                    label: 'LIGHTS',
+                                    icon: controller.lightsOn
+                                        ? Icons.lightbulb
+                                        : Icons.lightbulb_outline,
+                                    color: controller.lightsOn
+                                        ? Colors.yellow[700]!
+                                        : Colors.grey[700]!,
+                                    onPressed: controller.toggleLights,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              // Bottom row: HORN and EXIT
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildActionButton(
+                                    label: 'HORN',
+                                    icon: Icons.campaign,
+                                    color: Colors.blue,
+                                    onPressed: () {
+                                      print('Horn pressed!');
+                                      if (connection.selected != null) {
+                                        connection.sendCommand('HORN:1');
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _buildActionButton(
+                                    label: 'EXIT',
+                                    icon: Icons.power_settings_new,
+                                    color: Colors.grey[700]!,
+                                    onPressed: connection.disconnect,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     ),
-                  ),
 
-
-                  // Arrow Controls - Moved down to avoid slider overlap
-                  Positioned(
-                    bottom: 20, // Decreased from 40 to 20 (moves DOWN)
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: SizedBox(
-                        width: 220,
-                        child: Consumer<ControllerProvider>(
-                          builder: (context, controller, child) {
-                            return ArrowControls(
-                              arrowStates: controller.arrowStates,
-                              onDirectionChanged: controller.setArrowState,
-                            );
-                          },
+                    // Arrow Controls - Moved down to avoid slider
+                    Positioned(
+                      bottom: 20, // Positioned closer to bottom
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: SizedBox(
+                          width: 220,
+                          child: Consumer<ControllerProvider>(
+                            builder: (context, controller, child) {
+                              return ArrowControls(
+                                arrowStates: controller.arrowStates,
+                                onDirectionChanged: controller.setArrowState,
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-
-                  // Boost Button - Right Side
-                  Positioned(
-                    right: 30,
-                    bottom: 100,
-                    child: Consumer<ControllerProvider>(
-                      builder: (context, controller, child) {
-                        return BoostButton(
-                          capacitorCharge: controller.capacitorCharge,
-                          canBoost: controller.canBoost,
-                          isActive: controller.boostActive,
-                          onBoostChanged: controller.setBoost,
-                        );
-                      },
+                    // Boost Button - Right Side
+                    Positioned(
+                      right: 30,
+                      bottom: 100,
+                      child: Consumer<ControllerProvider>(
+                        builder: (context, controller, child) {
+                          return BoostButton(
+                            capacitorCharge: controller.capacitorCharge,
+                            canBoost: controller.canBoost,
+                            isActive: controller.boostActive,
+                            onBoostChanged: controller.setBoost,
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Helper method for compact action buttons
+  // Keep your existing _buildActionButton method unchanged
   Widget _buildActionButton({
     required String label,
     required IconData icon,

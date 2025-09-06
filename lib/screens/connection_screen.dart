@@ -1,12 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Add this import
 import 'package:provider/provider.dart';
 import '../providers/connection_provider.dart';
 import '../widgets/connection/connection_type_toggle.dart';
 import '../widgets/connection/device_discovery.dart';
-import '../screens/info_screen.dart';
 
-class ConnectionScreen extends StatelessWidget {
+class ConnectionScreen extends StatefulWidget {
   const ConnectionScreen({Key? key}) : super(key: key);
+
+  @override
+  State<ConnectionScreen> createState() => _ConnectionScreenState();
+}
+
+class _ConnectionScreenState extends State<ConnectionScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Lock to portrait orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
+
+  @override
+  void dispose() {
+    // Don't reset orientations here - let the controller screen handle it
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +39,8 @@ class ConnectionScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const InfoScreen()),
-              );
+              // Add info screen navigation if you created it
+              // Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen()));
             },
           ),
         ],
@@ -37,7 +56,6 @@ class ConnectionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Regular Scan Button
               ElevatedButton(
                 onPressed: provider.isLoading ? null : provider.scanForDevices,
                 child: provider.isLoading
