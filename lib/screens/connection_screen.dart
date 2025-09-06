@@ -4,9 +4,10 @@ import 'package:provider/provider.dart';
 import '../providers/connection_provider.dart';
 import '../widgets/connection/connection_type_toggle.dart';
 import '../widgets/connection/device_discovery.dart';
+import '../screens/info_screen.dart';
 
 class ConnectionScreen extends StatefulWidget {
-  const ConnectionScreen({Key? key}) : super(key: key);
+  const ConnectionScreen({super.key});
 
   @override
   State<ConnectionScreen> createState() => _ConnectionScreenState();
@@ -39,8 +40,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
-              // Add info screen navigation if you created it
-              // Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen()));
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen()));
             },
           ),
         ],
