@@ -24,12 +24,30 @@ class ConnectionScreen extends StatelessWidget {
                 onToggle: provider.toggleConnectionType,
               ),
               const SizedBox(height: 16),
+
+              // Regular Scan Button
               ElevatedButton(
                 onPressed: provider.isLoading ? null : provider.scanForDevices,
                 child: provider.isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text('Scan for Devices'),
               ),
+
+              const SizedBox(height: 16),
+
+              // Demo Mode Button
+              ElevatedButton(
+                onPressed: provider.enableDemoMode,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                ),
+                child: const Text(
+                  'Demo Mode (Test Controller)',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+
               const SizedBox(height: 16),
               Text(
                 provider.statusMessage,

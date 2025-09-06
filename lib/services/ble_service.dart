@@ -19,36 +19,37 @@ class BLEService {
         _scanResults = results;
       });
 
-      // Start scanning
+      // Start scanning - NO FILTERS to catch all devices
       await FlutterBluePlus.startScan(
-        timeout: const Duration(seconds: 4),
+        timeout: const Duration(seconds: 6),
         androidUsesFineLocation: true,
       );
 
       // Wait for scan to complete
-      await Future.delayed(const Duration(seconds: 4));
+      await Future.delayed(const Duration(seconds: 6));
 
       // Stop scanning
       await FlutterBluePlus.stopScan();
 
-      // Filter and convert to ESP32Device
+      // Convert ALL devices (not just ESP32)
       List<ESP32Device> devices = [];
       for (ScanResult result in _scanResults) {
-        // Check if device name contains ESP32 or if it's not empty
         String deviceName = result.device.advName.isNotEmpty
             ? result.device.advName
             : result.device.remoteId.toString();
 
-        if (deviceName.contains('ESP32') || deviceName.contains('RC')) {
+        // Accept ANY device with a name or strong signal
+        if (deviceName.isNotEmpty || result.rssi > -80) {
           devices.add(ESP32Device(
             id: result.device.remoteId.toString(),
-            name: deviceName,
+            name: deviceName.isEmpty ? 'Unknown Device' : deviceName,
             rssi: result.rssi,
             type: DeviceType.ble,
           ));
         }
       }
 
+      print('Found ${devices.length} BLE devices total');
       return devices;
 
     } catch (e) {
@@ -60,9 +61,9 @@ class BLEService {
     }
   }
 
+  // Rest of your methods stay the same...
   Future<bool> connect(String deviceId) async {
     try {
-      // Find the device from scan results
       BluetoothDevice? targetDevice;
 
       for (ScanResult result in _scanResults) {
@@ -77,13 +78,11 @@ class BLEService {
         return false;
       }
 
-      // Connect to device
       await targetDevice.connect(
         autoConnect: false,
         timeout: const Duration(seconds: 10),
       );
 
-      // Check connection state
       bool isConnected = await targetDevice.connectionState
           .where((state) => state == BluetoothConnectionState.connected)
           .timeout(const Duration(seconds: 10))
@@ -101,7 +100,6 @@ class BLEService {
 
   Future<void> disconnect(String deviceId) async {
     try {
-      // Find connected device
       for (ScanResult result in _scanResults) {
         if (result.device.remoteId.toString() == deviceId) {
           await result.device.disconnect();
@@ -115,7 +113,6 @@ class BLEService {
 
   Future<bool> sendCommand(String deviceId, String command) async {
     try {
-      // Find the connected device
       BluetoothDevice? targetDevice;
 
       for (ScanResult result in _scanResults) {
@@ -127,14 +124,11 @@ class BLEService {
 
       if (targetDevice == null) return false;
 
-      // Discover services
       List<BluetoothService> services = await targetDevice.discoverServices();
 
-      // Find the characteristic to write to (you'll need to know your ESP32's service/characteristic UUIDs)
       for (BluetoothService service in services) {
         for (BluetoothCharacteristic characteristic in service.characteristics) {
           if (characteristic.properties.write) {
-            // Write command as bytes
             await characteristic.write(command.codeUnits);
             return true;
           }

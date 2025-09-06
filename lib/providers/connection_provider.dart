@@ -10,8 +10,8 @@ class ConnectionProvider extends ChangeNotifier {
   ESP32Device? selected;
   bool isLoading = false;
   String statusMessage = '';
+  bool isDemoMode = false;  // Add this line
 
-  // Add these properties for the status bar
   int batteryLevel = 85;
   int capacitorCharge = 100;
 
@@ -25,19 +25,41 @@ class ConnectionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Add Demo Mode method
+  void enableDemoMode() {
+    isDemoMode = true;
+    selected = ESP32Device(
+      id: 'demo_device_123',
+      name: 'Demo ESP32 RC',
+      rssi: -45,
+      type: DeviceType.ble,
+      isConnected: true,
+    );
+    statusMessage = 'Demo Mode Active';
+    notifyListeners();
+  }
+
   Future<void> scanForDevices() async {
     isLoading = true;
-    statusMessage = 'Scanning...';
+    statusMessage = useBLE ? 'Scanning for BLE devices...' : 'Scanning for WiFi networks...';
     notifyListeners();
 
-    List<ESP32Device> found = useBLE
-        ? await _bleService.scan()
-        : await _wifiService.scan();
+    try {
+      List<ESP32Device> found = useBLE
+          ? await _bleService.scan()
+          : await _wifiService.scan();
 
-    devices = found;
-    statusMessage = 'Found ${devices.length} devices';
-    isLoading = false;
-    notifyListeners();
+      devices = found;
+      statusMessage = found.isEmpty
+          ? 'No ${useBLE ? 'BLE devices' : 'WiFi networks'} found'
+          : 'Found ${devices.length} ${useBLE ? 'BLE devices' : 'WiFi networks'}';
+    } catch (e) {
+      statusMessage = 'Scan failed: $e';
+      devices = [];
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> connectToDevice(ESP32Device device) async {
@@ -63,11 +85,12 @@ class ConnectionProvider extends ChangeNotifier {
 
   void disconnect() {
     if (selected != null) {
-      if (useBLE) {
+      if (!isDemoMode && useBLE) {
         _bleService.disconnect(selected!.id);
       }
       selected!.isConnected = false;
       selected = null;
+      isDemoMode = false;  // Reset demo mode
       statusMessage = 'Disconnected';
       notifyListeners();
     }
@@ -75,14 +98,14 @@ class ConnectionProvider extends ChangeNotifier {
 
   Future<void> sendCommand(String command) async {
     if (selected != null && selected!.isConnected) {
-      if (useBLE) {
+      if (!isDemoMode && useBLE) {
         await _bleService.sendCommand(selected!.id, command);
+      } else {
+        print('Demo Mode Command: $command');
       }
-      // Add WiFi command sending here if needed
     }
   }
 
-  // Add this method to connect the controller provider
   void linkControllerProvider(ControllerProvider controllerProvider) {
     if (selected != null && selected!.isConnected) {
       controllerProvider.setConnectedDevice(selected!.id);
