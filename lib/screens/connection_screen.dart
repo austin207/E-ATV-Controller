@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/connection_provider.dart';
 import '../widgets/connection/connection_type_toggle.dart';
 import '../widgets/connection/device_discovery.dart';
+import '../screens/info_screen.dart';
 
 class ConnectionScreen extends StatelessWidget {
   const ConnectionScreen({Key? key}) : super(key: key);
@@ -13,6 +14,17 @@ class ConnectionScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Connect to ESP32'),
         backgroundColor: Colors.grey[900],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const InfoScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: Consumer<ConnectionProvider>(
         builder: (_, provider, __) => Padding(
