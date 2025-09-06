@@ -1,4 +1,4 @@
-# 🚗 RC Controller Flutter App
+# RC Controller Flutter App
 
 A professional Flutter application for controlling RC vehicles via ESP32/ESP8266 microcontrollers using Bluetooth Low Energy (BLE) or WiFi connections.
 
@@ -7,7 +7,7 @@ A professional Flutter application for controlling RC vehicles via ESP32/ESP8266
 ![ESP32](https://img.shields.io/badge/ESP32-E7352C?style=flat&logo=espressif&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-## ✨ Features
+## Features
 
 - **Dual Connectivity**: Support for both BLE and WiFi connections
 - **Intuitive Controls**: 
@@ -26,7 +26,7 @@ A professional Flutter application for controlling RC vehicles via ESP32/ESP8266
   - Connection status monitoring
 - **Professional Design**: Dark theme with smooth animations
 
-## 🛠️ Hardware Requirements
+## Hardware Requirements
 
 ### Core Components
 - **ESP32** (recommended) or **ESP8266** development board
@@ -40,7 +40,7 @@ A professional Flutter application for controlling RC vehicles via ESP32/ESP8266
 - **Buzzer** (for horn function)
 - **Battery pack** for mobile operation
 
-## 📱 App Setup
+## App Setup
 
 ### Prerequisites
 - **Flutter SDK** (3.0+)
@@ -61,7 +61,7 @@ flutter pub get
 ```
 flutter run
 ```
-## 🔌 Hardware Setup
+## Hardware Setup
 
 ### Wiring Diagram
 
@@ -80,7 +80,7 @@ GND       ->   GND            Common Ground
 VIN       ->   +12V           Motor Power
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 1. **Flash Microcontroller**:
    - Open Arduino IDE
@@ -97,7 +97,7 @@ VIN       ->   +12V           Motor Power
    - Tap to connect
    - Enjoy controlling your RC vehicle!
 
-## 📡 Command Protocol
+## Command Protocol
 
 The app sends structured commands to the microcontroller:
 
@@ -108,7 +108,7 @@ Horn:     "HORN:1"
 Stop:     "STOP:1"
 ```
 
-## 🔧 Development
+## Development
 
 ### Project Structure
 ```
@@ -125,7 +125,7 @@ arduino/
 └── ESP8266_WiFi/            # ESP8266 WiFi AP code
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit issues and pull requests.
 
@@ -135,11 +135,11 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## Support
 
 - **Issues**: Use GitHub Issues for bug reports and feature requests
 - **Discussions**: Use GitHub Discussions for general questions
