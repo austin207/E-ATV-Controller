@@ -145,16 +145,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Discussions**: Use GitHub Discussions for general questions
 - **Documentation**: Check the `/docs` folder for detailed guides
 
-## 🙏 Acknowledgments
-
-- Flutter team for the amazing framework
-- ESP32/ESP8266 community for hardware support
-- Contributors who helped improve this project
-
 ---
 
 **Made with ❤️ for the RC enthusiast community**
-```
 
 ## Complete ESP32 BLE Code (arduino/ESP32_BLE/ESP32_BLE.ino)
 
@@ -605,3 +598,4 @@ int getValue(String command, String key) {
   
   return command.substring(startIndex, endIndex).toInt();
 }
+```
