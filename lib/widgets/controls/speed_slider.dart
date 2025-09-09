@@ -61,7 +61,6 @@ class SpeedSlider extends StatelessWidget {
           ),
         ),
 
-        // REMOVED: Progress bar Container
       ],
     );
   }

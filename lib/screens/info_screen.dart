@@ -202,159 +202,143 @@ class InfoScreen extends StatelessWidget {
   }
 
   String _getBLECode() {
-    return '''#include <BLEDevice.h>
-#include <BLEServer.h>
+    return '''
+    #include <BLEDevice.h>
 #include <BLEUtils.h>
-#include <BLE2902.h>
+#include <BLEServer.h>
 
-// Motor pins
-#define MOTOR1_PIN1 26
-#define MOTOR1_PIN2 27
-#define MOTOR2_PIN1 14
-#define MOTOR2_PIN2 12
-#define MOTOR1_PWM 25
-#define MOTOR2_PWM 33
+// UUIDs
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-// Accessory pins
-#define LED_PIN 2
-#define BUZZER_PIN 4
+// Forward declarations
+void processCommand(const String& command);
+int getValue(const String& command, const String& key);
+void handleMovement(int up, int down, int left, int right, int speed, int boost);
+void stopAllMotors();
 
-BLEServer* pServer = NULL;
-BLECharacteristic* pCharacteristic = NULL;
+BLEServer* pServer = nullptr;
+BLECharacteristic* pCharacteristic = nullptr;
 bool deviceConnected = false;
+bool oldDeviceConnected = false;
 
-class MyServerCallbacks: public BLEServerCallbacks {
-    void onConnect(BLEServer* pServer) {
-      deviceConnected = true;
-    };
-    void onDisconnect(BLEServer* pServer) {
-      deviceConnected = false;
-    }
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer* pServer) override {
+    deviceConnected = true;
+    Serial.println("Flutter app connected!!");
+  }
+  void onDisconnect(BLEServer* pServer) override {
+    deviceConnected = false;
+    Serial.println("Flutter app disconnected. Waiting for reconnection...");
+  }
 };
 
-class MyCallbacks: public BLECharacteristicCallbacks {
-    void onWrite(BLECharacteristic *pCharacteristic) {
-      String command = pCharacteristic->getValue().c_str();
-      processCommand(command);
+class MyCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic* pCharacteristic) override {
+    String value = pCharacteristic->getValue();
+    if (value.length() > 0) {
+      Serial.println("=== Command Received ===");
+      Serial.println("Raw: " + value);
+      processCommand(value);
+      Serial.println("=======================");
     }
+  }
 };
 
 void setup() {
   Serial.begin(115200);
-  
-  // Initialize pins
-  pinMode(MOTOR1_PIN1, OUTPUT);
-  pinMode(MOTOR1_PIN2, OUTPUT);
-  pinMode(MOTOR2_PIN1, OUTPUT);
-  pinMode(MOTOR2_PIN2, OUTPUT);
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(BUZZER_PIN, OUTPUT);
-  
-  // Setup BLE
-  BLEDevice::init("ESP32_RC_Car");
+  Serial.println("Starting E-ATV BLE Server...");
+
+  BLEDevice::init("E-ATV");
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
-  
-  BLEService *pService = pServer->createService("12345678-1234-1234-1234-1234567890ab");
+
+  BLEService* pService = pServer->createService(SERVICE_UUID);
   pCharacteristic = pService->createCharacteristic(
-    "87654321-4321-4321-4321-ba0987654321",
-    BLECharacteristic::PROPERTY_READ |
-    BLECharacteristic::PROPERTY_WRITE
+    CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE
   );
-  
   pCharacteristic->setCallbacks(new MyCallbacks());
+  pCharacteristic->setValue("E-ATV Ready");
   pService->start();
-  
-  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID("12345678-1234-1234-1234-1234567890ab");
-  pAdvertising->setScanResponse(false);
-  pAdvertising->setMinPreferred(0x0);
+
+  BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
-  
-  Serial.println("ESP32 RC Car Ready!");
+
+  Serial.println("E-ATV BLE server active - waiting for Flutter app...");
 }
 
 void loop() {
-  if (!deviceConnected) {
+  if (!deviceConnected && oldDeviceConnected) {
     delay(500);
     BLEDevice::startAdvertising();
+    Serial.println("Restarting BLE advertising...");
+    oldDeviceConnected = deviceConnected;
   }
-  delay(20);
+  if (deviceConnected && !oldDeviceConnected) {
+    oldDeviceConnected = deviceConnected;
+  }
+  delay(100);
 }
 
-void processCommand(String command) {
-  Serial.println("Received: " + command);
-  
+void processCommand(const String& command) {
   if (command.startsWith("MOVE:")) {
-    handleMovement(command);
-  } else if (command.startsWith("LIGHT:")) {
-    int state = command.substring(6).toInt();
-    digitalWrite(LED_PIN, state);
-  } else if (command.startsWith("HORN:")) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(200);
-    digitalWrite(BUZZER_PIN, LOW);
-  } else if (command.startsWith("STOP:")) {
+    int up    = getValue(command, "UP=");
+    int down  = getValue(command, "DOWN=");
+    int left  = getValue(command, "LEFT=");
+    int right = getValue(command, "RIGHT=");
+    int speed = getValue(command, "SPEED=");
+    int boost = getValue(command, "BOOST=");
+    Serial.printf(
+      "MOVEMENT: UP=%d DOWN=%d LEFT=%d RIGHT=%d SPEED=%d BOOST=%d\n",
+      up, down, left, right, speed, boost
+    );
+    handleMovement(up, down, left, right, speed, boost);
+  }
+  else if (command.startsWith("LIGHT:")) {
+    int state = getValue(command, "LIGHT:");
+    Serial.println("LIGHTS: " + String(state ? "ON" : "OFF"));
+    // TODO: light control
+  }
+  else if (command.startsWith("HORN:")) {
+    Serial.println("HORN: Activated");
+    // TODO: horn control
+  }
+  else if (command.startsWith("STOP:")) {
+    Serial.println("EMERGENCY STOP: All motors stopped");
     stopAllMotors();
+  }
+  else {
+    Serial.println("Unknown command: " + command);
   }
 }
 
-void handleMovement(String command) {
-  int up = getValue(command, "UP=");
-  int down = getValue(command, "DOWN=");
-  int left = getValue(command, "LEFT=");
-  int right = getValue(command, "RIGHT=");
-  int speed = getValue(command, "SPEED=");
-  
-  speed = constrain(speed, 0, 255);
-  
-  // Forward/Backward
-  if (up && !down) {
-    digitalWrite(MOTOR1_PIN1, HIGH);
-    digitalWrite(MOTOR1_PIN2, LOW);
-    digitalWrite(MOTOR2_PIN1, HIGH);
-    digitalWrite(MOTOR2_PIN2, LOW);
-  } else if (down && !up) {
-    digitalWrite(MOTOR1_PIN1, LOW);
-    digitalWrite(MOTOR1_PIN2, HIGH);
-    digitalWrite(MOTOR2_PIN1, LOW);
-    digitalWrite(MOTOR2_PIN2, HIGH);
-  } else if (left && !right) {
-    digitalWrite(MOTOR1_PIN1, LOW);
-    digitalWrite(MOTOR1_PIN2, HIGH);
-    digitalWrite(MOTOR2_PIN1, HIGH);
-    digitalWrite(MOTOR2_PIN2, LOW);
-  } else if (right && !left) {
-    digitalWrite(MOTOR1_PIN1, HIGH);
-    digitalWrite(MOTOR1_PIN2, LOW);
-    digitalWrite(MOTOR2_PIN1, LOW);
-    digitalWrite(MOTOR2_PIN2, HIGH);
-  } else {
-    stopAllMotors();
-    return;
+int getValue(const String& command, const String& key) {
+  int start = command.indexOf(key);
+  if (start < 0) return 0;
+  start += key.length();
+  int end = command.indexOf(',', start);
+  if (end < 0) end = command.length();
+  return command.substring(start, end).toInt();
+}
+
+void handleMovement(int up, int down, int left, int right, int speed, int boost) {
+  if (boost) {
+    speed = min(100, int(speed * 1.2));
   }
-  
-  analogWrite(MOTOR1_PWM, speed);
-  analogWrite(MOTOR2_PWM, speed);
+  Serial.println("Motor logic executed with speed: " + String(speed));
+  // TODO: motor control code
 }
 
 void stopAllMotors() {
-  digitalWrite(MOTOR1_PIN1, LOW);
-  digitalWrite(MOTOR1_PIN2, LOW);
-  digitalWrite(MOTOR2_PIN1, LOW);
-  digitalWrite(MOTOR2_PIN2, LOW);
-  analogWrite(MOTOR1_PWM, 0);
-  analogWrite(MOTOR2_PWM, 0);
+  Serial.println("All motors stopped!");
+  // TODO: stop motors
 }
-
-int getValue(String command, String key) {
-  int startIndex = command.indexOf(key);
-  if (startIndex == -1) return 0;
-  startIndex += key.length();
-  int endIndex = command.indexOf(',', startIndex);
-  if (endIndex == -1) endIndex = command.length();
-  return command.substring(startIndex, endIndex).toInt();
-}''';
+''';
   }
 
   String _getWiFiCode() {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/connection_provider.dart';
 import 'providers/controller_provider.dart';
@@ -8,9 +7,6 @@ import 'screens/controller_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Remove the orientation lock from here
-  // Let each screen handle its own orientation
 
   runApp(
     MultiProvider(

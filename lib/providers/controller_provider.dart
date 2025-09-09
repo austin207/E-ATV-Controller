@@ -21,16 +21,14 @@ class ControllerProvider extends ChangeNotifier {
   // Capacitor system constants
   static const double _maxCapacitorCharge = 100.0;
   static const double _minBoostThreshold = 20.0;
-  static const double _chargeRate = 15.0; // charge per second
-  static const double _dischargeRate = 25.0; // discharge per second during boost
+  static const double _chargeRate = 15.0;
+  static const double _dischargeRate = 25.0;
   static const double _boostMultiplier = 1.5;
 
   Timer? _capacitorTimer;
 
-  // Add BLE service instance
+  // BLE service instance
   final BLEService _bleService = BLEService();
-
-  // Add connected device ID
   String? _connectedDeviceId;
 
   // Getters
@@ -46,15 +44,23 @@ class ControllerProvider extends ChangeNotifier {
     _startCapacitorSystem();
   }
 
-  // Add setter for device ID
+  // FIXED: Properly set connected device
   void setConnectedDevice(String deviceId) {
     _connectedDeviceId = deviceId;
+    print('ControllerProvider: Connected device set to $deviceId');
+  }
+
+  // Clear connected device on disconnect
+  void clearConnectedDevice() {
+    _connectedDeviceId = null;
+    print('ControllerProvider: Connected device cleared');
   }
 
   // Arrow control methods
   void setArrowState(String direction, bool isPressed) {
     if (_arrowStates.containsKey(direction)) {
       _arrowStates[direction] = isPressed;
+      print('Arrow $direction: ${isPressed ? "PRESSED" : "RELEASED"}');
       notifyListeners();
       _sendMovementCommand();
     }
@@ -63,6 +69,7 @@ class ControllerProvider extends ChangeNotifier {
   // Speed control
   void setSpeed(double newSpeed) {
     _speed = newSpeed.clamp(0.0, 100.0);
+    print('Speed changed to: $_speed');
     notifyListeners();
     _sendMovementCommand();
   }
@@ -72,9 +79,11 @@ class ControllerProvider extends ChangeNotifier {
     if (active && canBoost) {
       _boostActive = true;
       _capacitorCharging = false;
+      print('BOOST ACTIVATED');
     } else {
       _boostActive = false;
       _capacitorCharging = true;
+      print('BOOST DEACTIVATED');
     }
     notifyListeners();
     _sendMovementCommand();
@@ -83,6 +92,7 @@ class ControllerProvider extends ChangeNotifier {
   // Light control
   void toggleLights() {
     _lightsOn = !_lightsOn;
+    print('Lights ${_lightsOn ? "ON" : "OFF"}');
     notifyListeners();
     _sendLightCommand();
   }
@@ -92,6 +102,7 @@ class ControllerProvider extends ChangeNotifier {
     _arrowStates.forEach((key, value) => _arrowStates[key] = false);
     _boostActive = false;
     _capacitorCharging = true;
+    print('EMERGENCY STOP ACTIVATED');
     notifyListeners();
     _sendEmergencyStopCommand();
   }
@@ -100,46 +111,49 @@ class ControllerProvider extends ChangeNotifier {
   void _startCapacitorSystem() {
     _capacitorTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_boostActive && _capacitorCharge > 0) {
-        // Discharge during boost
         _capacitorCharge = (_capacitorCharge - (_dischargeRate * 0.1)).clamp(0.0, _maxCapacitorCharge);
         if (_capacitorCharge <= 0) {
           _boostActive = false;
           _capacitorCharging = true;
         }
       } else if (_capacitorCharging && _capacitorCharge < _maxCapacitorCharge) {
-        // Charge when not boosting
         _capacitorCharge = (_capacitorCharge + (_chargeRate * 0.1)).clamp(0.0, _maxCapacitorCharge);
       }
       notifyListeners();
     });
   }
 
-  // Command sending methods (to be connected to BLE service)
+  // FIXED: Better command sending with error handling
   void _sendMovementCommand() {
     String command = _buildMovementCommand();
-    print('Sending: $command'); // Debug print
+    print('🚀 SENDING MOVEMENT: $command');
 
-    // Send via BLE if connected
     if (_connectedDeviceId != null) {
       _bleService.sendCommand(_connectedDeviceId!, command);
+    } else {
+      print('❌ ERROR: No connected device ID!');
     }
   }
 
   void _sendLightCommand() {
     String command = 'LIGHT:${_lightsOn ? 1 : 0}';
-    print('Sending: $command');
+    print('💡 SENDING LIGHT: $command');
 
     if (_connectedDeviceId != null) {
       _bleService.sendCommand(_connectedDeviceId!, command);
+    } else {
+      print('❌ ERROR: No connected device ID!');
     }
   }
 
   void _sendEmergencyStopCommand() {
     String command = 'STOP:1';
-    print('Sending: $command');
+    print('🛑 SENDING STOP: $command');
 
     if (_connectedDeviceId != null) {
       _bleService.sendCommand(_connectedDeviceId!, command);
+    } else {
+      print('❌ ERROR: No connected device ID!');
     }
   }
 
