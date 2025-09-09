@@ -153,449 +153,139 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ```cpp
 #include <BLEDevice.h>
-#include <BLEServer.h>
 #include <BLEUtils.h>
-#include <BLE2902.h>
+#include <BLEServer.h>
 
-// Motor Control Pins
-#define MOTOR1_PIN1 26
-#define MOTOR1_PIN2 27
-#define MOTOR2_PIN1 14
-#define MOTOR2_PIN2 12
-#define MOTOR1_PWM 25
-#define MOTOR2_PWM 33
+// UUIDs
+#define SERVICE_UUID        "<YOUR SERVICE UUID>"
+#define CHARACTERISTIC_UUID "<YOUR CHARACTERISTIC UUID>"
 
-// Accessory Pins
-#define LED_PIN 2
-#define BUZZER_PIN 4
+// Forward declarations
+void processCommand(const String& command);
+int getValue(const String& command, const String& key);
+void handleMovement(int up, int down, int left, int right, int speed, int boost);
+void stopAllMotors();
 
-// BLE Configuration
-#define SERVICE_UUID        "12345678-1234-1234-1234-1234567890ab"
-#define CHARACTERISTIC_UUID "87654321-4321-4321-4321-ba0987654321"
-
-BLEServer* pServer = NULL;
-BLECharacteristic* pCharacteristic = NULL;
+BLEServer* pServer = nullptr;
+BLECharacteristic* pCharacteristic = nullptr;
 bool deviceConnected = false;
+bool oldDeviceConnected = false;
 
-class MyServerCallbacks: public BLEServerCallbacks {
-    void onConnect(BLEServer* pServer) {
-      deviceConnected = true;
-      Serial.println("Device Connected");
-    }
-
-    void onDisconnect(BLEServer* pServer) {
-      deviceConnected = false;
-      stopAllMotors();
-      Serial.println("Device Disconnected");
-    }
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer* pServer) override {
+    deviceConnected = true;
+    Serial.println("Flutter app connected!!");
+  }
+  void onDisconnect(BLEServer* pServer) override {
+    deviceConnected = false;
+    Serial.println("Flutter app disconnected. Waiting for reconnection...");
+  }
 };
 
-class MyCallbacks: public BLECharacteristicCallbacks {
-    void onWrite(BLECharacteristic *pCharacteristic) {
-      std::string value = pCharacteristic->getValue();
-      if (value.length() > 0) {
-        String command = String(value.c_str());
-        Serial.println("Received: " + command);
-        processCommand(command);
-      }
+class MyCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic* pCharacteristic) override {
+    String value = pCharacteristic->getValue();
+    if (value.length() > 0) {
+      Serial.println("=== Command Received ===");
+      Serial.println("Raw: " + value);
+      processCommand(value);
+      Serial.println("=======================");
     }
+  }
 };
 
 void setup() {
   Serial.begin(115200);
-  
-  // Initialize motor pins
-  pinMode(MOTOR1_PIN1, OUTPUT);
-  pinMode(MOTOR1_PIN2, OUTPUT);
-  pinMode(MOTOR2_PIN1, OUTPUT);
-  pinMode(MOTOR2_PIN2, OUTPUT);
-  pinMode(MOTOR1_PWM, OUTPUT);
-  pinMode(MOTOR2_PWM, OUTPUT);
-  
-  // Initialize accessory pins
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(BUZZER_PIN, OUTPUT);
-  
-  // Stop all motors initially
-  stopAllMotors();
-  
-  // Initialize BLE
-  BLEDevice::init("ESP32_RC_Car");
+  Serial.println("Starting E-ATV BLE Server...");
+
+  BLEDevice::init("E-ATV");
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
 
-  BLEService *pService = pServer->createService(SERVICE_UUID);
-
+  BLEService* pService = pServer->createService(SERVICE_UUID);
   pCharacteristic = pService->createCharacteristic(
-                      CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_READ |
-                      BLECharacteristic::PROPERTY_WRITE
-                    );
-
+    CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE
+  );
   pCharacteristic->setCallbacks(new MyCallbacks());
-
+  pCharacteristic->setValue("E-ATV Ready");
   pService->start();
-  
-  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+
+  BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(false);
-  pAdvertising->setMinPreferred(0x0);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
-  
-  Serial.println("ESP32 RC Car BLE Server Ready!");
+
+  Serial.println("E-ATV BLE server active - waiting for Flutter app...");
 }
 
 void loop() {
-  // Restart advertising if disconnected
-  if (!deviceConnected) {
+  if (!deviceConnected && oldDeviceConnected) {
     delay(500);
     BLEDevice::startAdvertising();
+    Serial.println("Restarting BLE advertising...");
+    oldDeviceConnected = deviceConnected;
   }
-  delay(20);
+  if (deviceConnected && !oldDeviceConnected) {
+    oldDeviceConnected = deviceConnected;
+  }
+  delay(100);
 }
 
-void processCommand(String command) {
+void processCommand(const String& command) {
   if (command.startsWith("MOVE:")) {
-    handleMovement(command);
-  } else if (command.startsWith("LIGHT:")) {
-    int state = command.substring(6).toInt();
-    digitalWrite(LED_PIN, state);
-    Serial.println("Light: " + String(state ? "ON" : "OFF"));
-  } else if (command.startsWith("HORN:")) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(200);
-    digitalWrite(BUZZER_PIN, LOW);
-    Serial.println("Horn activated");
-  } else if (command.startsWith("STOP:")) {
+    int up    = getValue(command, "UP=");
+    int down  = getValue(command, "DOWN=");
+    int left  = getValue(command, "LEFT=");
+    int right = getValue(command, "RIGHT=");
+    int speed = getValue(command, "SPEED=");
+    int boost = getValue(command, "BOOST=");
+    Serial.printf(
+      "MOVEMENT: UP=%d DOWN=%d LEFT=%d RIGHT=%d SPEED=%d BOOST=%d\n",
+      up, down, left, right, speed, boost
+    );
+    handleMovement(up, down, left, right, speed, boost);
+  }
+  else if (command.startsWith("LIGHT:")) {
+    int state = getValue(command, "LIGHT:");
+    Serial.println("LIGHTS: " + String(state ? "ON" : "OFF"));
+    // TODO: light control
+  }
+  else if (command.startsWith("HORN:")) {
+    Serial.println("HORN: Activated");
+    // TODO: horn control
+  }
+  else if (command.startsWith("STOP:")) {
+    Serial.println("EMERGENCY STOP: All motors stopped");
     stopAllMotors();
-    Serial.println("Emergency stop");
+  }
+  else {
+    Serial.println("Unknown command: " + command);
   }
 }
 
-void handleMovement(String command) {
-  int up = getValue(command, "UP=");
-  int down = getValue(command, "DOWN=");
-  int left = getValue(command, "LEFT=");
-  int right = getValue(command, "RIGHT=");
-  int speed = getValue(command, "SPEED=");
-  int boost = getValue(command, "BOOST=");
-  
-  // Apply boost multiplier
+int getValue(const String& command, const String& key) {
+  int start = command.indexOf(key);
+  if (start < 0) return 0;
+  start += key.length();
+  int end = command.indexOf(',', start);
+  if (end < 0) end = command.length();
+  return command.substring(start, end).toInt();
+}
+
+void handleMovement(int up, int down, int left, int right, int speed, int boost) {
   if (boost) {
-    speed = min(255, (int)(speed * 1.5));
+    speed = min(100, int(speed * 1.2));
   }
-  
-  speed = constrain(speed, 0, 255);
-  
-  Serial.printf("Movement - UP:%d DOWN:%d LEFT:%d RIGHT:%d SPEED:%d BOOST:%d\n", 
-                up, down, left, right, speed, boost);
-
-  // Handle movement combinations
-  if (up && !down) {
-    if (left && !right) {
-      // Forward Left
-      setMotorSpeed(1, speed * 0.7); // Reduce left motor for turning
-      setMotorSpeed(2, speed);
-    } else if (right && !left) {
-      // Forward Right  
-      setMotorSpeed(1, speed);
-      setMotorSpeed(2, speed * 0.7); // Reduce right motor for turning
-    } else {
-      // Forward
-      setMotorSpeed(1, speed);
-      setMotorSpeed(2, speed);
-    }
-  } else if (down && !up) {
-    if (left && !right) {
-      // Backward Left
-      setMotorSpeed(1, -speed * 0.7);
-      setMotorSpeed(2, -speed);
-    } else if (right && !left) {
-      // Backward Right
-      setMotorSpeed(1, -speed);
-      setMotorSpeed(2, -speed * 0.7);
-    } else {
-      // Backward
-      setMotorSpeed(1, -speed);
-      setMotorSpeed(2, -speed);
-    }
-  } else if (left && !right && !up && !down) {
-    // Turn Left (tank turn)
-    setMotorSpeed(1, -speed * 0.8);
-    setMotorSpeed(2, speed * 0.8);
-  } else if (right && !left && !up && !down) {
-    // Turn Right (tank turn)
-    setMotorSpeed(1, speed * 0.8);
-    setMotorSpeed(2, -speed * 0.8);
-  } else {
-    // Stop
-    stopAllMotors();
-  }
-}
-
-void setMotorSpeed(int motor, int speed) {
-  if (motor == 1) {
-    if (speed > 0) {
-      digitalWrite(MOTOR1_PIN1, HIGH);
-      digitalWrite(MOTOR1_PIN2, LOW);
-      analogWrite(MOTOR1_PWM, speed);
-    } else if (speed < 0) {
-      digitalWrite(MOTOR1_PIN1, LOW);
-      digitalWrite(MOTOR1_PIN2, HIGH);
-      analogWrite(MOTOR1_PWM, -speed);
-    } else {
-      digitalWrite(MOTOR1_PIN1, LOW);
-      digitalWrite(MOTOR1_PIN2, LOW);
-      analogWrite(MOTOR1_PWM, 0);
-    }
-  } else if (motor == 2) {
-    if (speed > 0) {
-      digitalWrite(MOTOR2_PIN1, HIGH);
-      digitalWrite(MOTOR2_PIN2, LOW);
-      analogWrite(MOTOR2_PWM, speed);
-    } else if (speed < 0) {
-      digitalWrite(MOTOR2_PIN1, LOW);
-      digitalWrite(MOTOR2_PIN2, HIGH);
-      analogWrite(MOTOR2_PWM, -speed);
-    } else {
-      digitalWrite(MOTOR2_PIN1, LOW);
-      digitalWrite(MOTOR2_PIN2, LOW);
-      analogWrite(MOTOR2_PWM, 0);
-    }
-  }
+  Serial.println("Motor logic executed with speed: " + String(speed));
+  // TODO: motor control code
 }
 
 void stopAllMotors() {
-  setMotorSpeed(1, 0);
-  setMotorSpeed(2, 0);
+  Serial.println("All motors stopped!");
+  // TODO: stop motors
 }
 
-int getValue(String command, String key) {
-  int startIndex = command.indexOf(key);
-  if (startIndex == -1) return 0;
-  
-  startIndex += key.length();
-  int endIndex = command.indexOf(',', startIndex);
-  if (endIndex == -1) endIndex = command.length();
-  
-  return command.substring(startIndex, endIndex).toInt();
-}
-```
-
-## Complete ESP8266 WiFi Code (arduino/ESP8266_WiFi/ESP8266_WiFi.ino)
-
-```cpp
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-
-// Network Configuration
-const char* ssid = "ESP8266_RC_Car";
-const char* password = "12345678";
-
-// Motor Control Pins (NodeMCU Pin Labels)
-#define MOTOR1_PIN1 D5  // GPIO14
-#define MOTOR1_PIN2 D6  // GPIO12
-#define MOTOR2_PIN1 D7  // GPIO13
-#define MOTOR2_PIN2 D8  // GPIO15
-#define MOTOR1_PWM  D1  // GPIO5
-#define MOTOR2_PWM  D2  // GPIO4
-
-// Accessory Pins
-#define LED_PIN     D4  // GPIO2 (built-in LED)
-#define BUZZER_PIN  D3  // GPIO0
-
-ESP8266WebServer server(80);
-
-void setup() {
-  Serial.begin(115200);
-  
-  // Initialize motor pins
-  pinMode(MOTOR1_PIN1, OUTPUT);
-  pinMode(MOTOR1_PIN2, OUTPUT);
-  pinMode(MOTOR2_PIN1, OUTPUT);
-  pinMode(MOTOR2_PIN2, OUTPUT);
-  pinMode(MOTOR1_PWM, OUTPUT);
-  pinMode(MOTOR2_PWM, OUTPUT);
-  
-  // Initialize accessory pins
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(BUZZER_PIN, OUTPUT);
-  
-  // Stop all motors initially
-  stopAllMotors();
-  
-  // Setup WiFi Access Point
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(ssid, password);
-  
-  IPAddress IP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(IP);
-  
-  // Setup HTTP server routes
-  server.on("/", handleRoot);
-  server.on("/command", HTTP_POST, handleCommand);
-  server.on("/status", HTTP_GET, handleStatus);
-  server.onNotFound(handleNotFound);
-  
-  server.begin();
-  Serial.println("HTTP server started");
-  Serial.println("ESP8266 RC Car WiFi Ready!");
-}
-
-void loop() {
-  server.handleClient();
-}
-
-void handleRoot() {
-  String html = "<html><body>";
-  html += "<h1>ESP8266 RC Car</h1>";
-  html += "<p>RC Car is ready for commands</p>";
-  html += "<p>Send POST requests to /command</p>";
-  html += "</body></html>";
-  server.send(200, "text/html", html);
-}
-
-void handleCommand() {
-  if (server.hasArg("cmd")) {
-    String command = server.arg("cmd");
-    Serial.println("Received: " + command);
-    processCommand(command);
-    server.send(200, "text/plain", "OK");
-  } else {
-    server.send(400, "text/plain", "Missing 'cmd' parameter");
-  }
-}
-
-void handleStatus() {
-  String json = "{";
-  json += "\"connected\": " + String(WiFi.softAPgetStationNum()) + ",";
-  json += "\"ip\": \"" + WiFi.softAPIP().toString() + "\",";
-  json += "\"ssid\": \"" + String(ssid) + "\"";
-  json += "}";
-  server.send(200, "application/json", json);
-}
-
-void handleNotFound() {
-  server.send(404, "text/plain", "Not found");
-}
-
-void processCommand(String command) {
-  if (command.startsWith("MOVE:")) {
-    handleMovement(command);
-  } else if (command.startsWith("LIGHT:")) {
-    int state = command.substring(6).toInt();
-    digitalWrite(LED_PIN, !state); // Built-in LED is inverted
-    Serial.println("Light: " + String(state ? "ON" : "OFF"));
-  } else if (command.startsWith("HORN:")) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(200);
-    digitalWrite(BUZZER_PIN, LOW);
-    Serial.println("Horn activated");
-  } else if (command.startsWith("STOP:")) {
-    stopAllMotors();
-    Serial.println("Emergency stop");
-  }
-}
-
-void handleMovement(String command) {
-  int up = getValue(command, "UP=");
-  int down = getValue(command, "DOWN=");
-  int left = getValue(command, "LEFT=");
-  int right = getValue(command, "RIGHT=");
-  int speed = getValue(command, "SPEED=");
-  int boost = getValue(command, "BOOST=");
-  
-  // Convert speed from 0-100 to 0-1023 (ESP8266 PWM range)
-  speed = map(speed, 0, 100, 0, 1023);
-  
-  // Apply boost multiplier
-  if (boost) {
-    speed = min(1023, (int)(speed * 1.5));
-  }
-  
-  Serial.printf("Movement - UP:%d DOWN:%d LEFT:%d RIGHT:%d SPEED:%d BOOST:%d\n", 
-                up, down, left, right, speed, boost);
-
-  // Handle movement combinations (same logic as ESP32)
-  if (up && !down) {
-    if (left && !right) {
-      setMotorSpeed(1, speed * 0.7);
-      setMotorSpeed(2, speed);
-    } else if (right && !left) {
-      setMotorSpeed(1, speed);
-      setMotorSpeed(2, speed * 0.7);
-    } else {
-      setMotorSpeed(1, speed);
-      setMotorSpeed(2, speed);
-    }
-  } else if (down && !up) {
-    if (left && !right) {
-      setMotorSpeed(1, -speed * 0.7);
-      setMotorSpeed(2, -speed);
-    } else if (right && !left) {
-      setMotorSpeed(1, -speed);
-      setMotorSpeed(2, -speed * 0.7);
-    } else {
-      setMotorSpeed(1, -speed);
-      setMotorSpeed(2, -speed);
-    }
-  } else if (left && !right && !up && !down) {
-    setMotorSpeed(1, -speed * 0.8);
-    setMotorSpeed(2, speed * 0.8);
-  } else if (right && !left && !up && !down) {
-    setMotorSpeed(1, speed * 0.8);
-    setMotorSpeed(2, -speed * 0.8);
-  } else {
-    stopAllMotors();
-  }
-}
-
-void setMotorSpeed(int motor, int speed) {
-  if (motor == 1) {
-    if (speed > 0) {
-      digitalWrite(MOTOR1_PIN1, HIGH);
-      digitalWrite(MOTOR1_PIN2, LOW);
-      analogWrite(MOTOR1_PWM, speed);
-    } else if (speed < 0) {
-      digitalWrite(MOTOR1_PIN1, LOW);
-      digitalWrite(MOTOR1_PIN2, HIGH);
-      analogWrite(MOTOR1_PWM, -speed);
-    } else {
-      digitalWrite(MOTOR1_PIN1, LOW);
-      digitalWrite(MOTOR1_PIN2, LOW);
-      analogWrite(MOTOR1_PWM, 0);
-    }
-  } else if (motor == 2) {
-    if (speed > 0) {
-      digitalWrite(MOTOR2_PIN1, HIGH);
-      digitalWrite(MOTOR2_PIN2, LOW);
-      analogWrite(MOTOR2_PWM, speed);
-    } else if (speed < 0) {
-      digitalWrite(MOTOR2_PIN1, LOW);
-      digitalWrite(MOTOR2_PIN2, HIGH);
-      analogWrite(MOTOR2_PWM, -speed);
-    } else {
-      digitalWrite(MOTOR2_PIN1, LOW);
-      digitalWrite(MOTOR2_PIN2, LOW);
-      analogWrite(MOTOR2_PWM, 0);
-    }
-  }
-}
-
-void stopAllMotors() {
-  setMotorSpeed(1, 0);
-  setMotorSpeed(2, 0);
-}
-
-int getValue(String command, String key) {
-  int startIndex = command.indexOf(key);
-  if (startIndex == -1) return 0;
-  
-  startIndex += key.length();
-  int endIndex = command.indexOf(',', startIndex);
-  if (endIndex == -1) endIndex = command.length();
-  
-  return command.substring(startIndex, endIndex).toInt();
-}
 ```
