@@ -1,0 +1,88 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    branches: [ develop, main ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            lib/**/*.dart
+            android/**/*.gradle*
+            android/**/*.kt
+            android/**/*.java
+            pubspec.yaml
+
+      - name: AI Code Review
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { GoogleGenerativeAI } = require('@google/generative-ai');
+            
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+            
+            const changedFiles = `${{ steps.changed-files.outputs.all_changed_files }}`.split(' ');
+            const fs = require('fs');
+            
+            for (const file of changedFiles) {
+              if (fs.existsSync(file)) {
+                const content = fs.readFileSync(file, 'utf8');
+            
+                const prompt = `
+                You are an expert Flutter/Android developer reviewing code for an RC Controller app.
+            
+                Review this file for:
+                1. Security issues (API keys, passwords, sensitive data)
+                2. Flutter/Dart best practices
+                3. BLE/WiFi connectivity code quality
+                4. Performance issues
+                5. Potential bugs
+                6. Android manifest security
+            
+                File: ${file}
+                Content:
+                \`\`\`
+                ${content}
+                \`\`\`
+            
+                Provide specific feedback with line numbers where applicable. If the code looks good, say "✅ Code looks good!"
+                `;
+            
+                try {
+                  const result = await model.generateContent(prompt);
+                  const review = result.response.text();
+            
+                  await github.rest.pulls.createReviewComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: context.issue.number,
+                    body: `## 🤖 AI Code Review - ${file}\n\n${review}`,
+                    commit_id: context.payload.pull_request.head.sha,
+                    path: file,
+                    line: 1
+                  });
+                } catch (error) {
+                  console.log(`Error reviewing ${file}:`, error);
+                }
+              }
+            }
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
