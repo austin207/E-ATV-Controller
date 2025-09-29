@@ -4,7 +4,7 @@ import '../services/ble_service.dart';
 
 class ControllerProvider extends ChangeNotifier {
   // Arrow button states
-  Map<String, bool> _arrowStates = {
+  final Map<String, bool> _arrowStates = {
     'up': false,
     'down': false,
     'left': false,
@@ -47,20 +47,20 @@ class ControllerProvider extends ChangeNotifier {
   // FIXED: Properly set connected device
   void setConnectedDevice(String deviceId) {
     _connectedDeviceId = deviceId;
-    print('ControllerProvider: Connected device set to $deviceId');
+    // print('ControllerProvider: Connected device set to $deviceId');
   }
 
   // Clear connected device on disconnect
   void clearConnectedDevice() {
     _connectedDeviceId = null;
-    print('ControllerProvider: Connected device cleared');
+    // print('ControllerProvider: Connected device cleared');
   }
 
   // Arrow control methods
   void setArrowState(String direction, bool isPressed) {
     if (_arrowStates.containsKey(direction)) {
       _arrowStates[direction] = isPressed;
-      print('Arrow $direction: ${isPressed ? "PRESSED" : "RELEASED"}');
+      // print('Arrow $direction: ${isPressed ? "PRESSED" : "RELEASED"}');
       notifyListeners();
       _sendMovementCommand();
     }
@@ -69,7 +69,7 @@ class ControllerProvider extends ChangeNotifier {
   // Speed control
   void setSpeed(double newSpeed) {
     _speed = newSpeed.clamp(0.0, 100.0);
-    print('Speed changed to: $_speed');
+    // print('Speed changed to: $_speed');
     notifyListeners();
     _sendMovementCommand();
   }
@@ -79,11 +79,11 @@ class ControllerProvider extends ChangeNotifier {
     if (active && canBoost) {
       _boostActive = true;
       _capacitorCharging = false;
-      print('BOOST ACTIVATED');
+      // print('BOOST ACTIVATED');
     } else {
       _boostActive = false;
       _capacitorCharging = true;
-      print('BOOST DEACTIVATED');
+      // print('BOOST DEACTIVATED');
     }
     notifyListeners();
     _sendMovementCommand();
@@ -92,7 +92,7 @@ class ControllerProvider extends ChangeNotifier {
   // Light control
   void toggleLights() {
     _lightsOn = !_lightsOn;
-    print('Lights ${_lightsOn ? "ON" : "OFF"}');
+    // print('Lights ${_lightsOn ? "ON" : "OFF"}');
     notifyListeners();
     _sendLightCommand();
   }
@@ -102,7 +102,7 @@ class ControllerProvider extends ChangeNotifier {
     _arrowStates.forEach((key, value) => _arrowStates[key] = false);
     _boostActive = false;
     _capacitorCharging = true;
-    print('EMERGENCY STOP ACTIVATED');
+    // print('EMERGENCY STOP ACTIVATED');
     notifyListeners();
     _sendEmergencyStopCommand();
   }
@@ -126,34 +126,34 @@ class ControllerProvider extends ChangeNotifier {
   // FIXED: Better command sending with error handling
   void _sendMovementCommand() {
     String command = _buildMovementCommand();
-    print('🚀 SENDING MOVEMENT: $command');
+    // print('🚀 SENDING MOVEMENT: $command');
 
     if (_connectedDeviceId != null) {
       _bleService.sendCommand(_connectedDeviceId!, command);
     } else {
-      print('❌ ERROR: No connected device ID!');
+      // print('❌ ERROR: No connected device ID!');
     }
   }
 
   void _sendLightCommand() {
     String command = 'LIGHT:${_lightsOn ? 1 : 0}';
-    print('💡 SENDING LIGHT: $command');
+    // print('💡 SENDING LIGHT: $command');
 
     if (_connectedDeviceId != null) {
       _bleService.sendCommand(_connectedDeviceId!, command);
     } else {
-      print('❌ ERROR: No connected device ID!');
+     // print('❌ ERROR: No connected device ID!');
     }
   }
 
   void _sendEmergencyStopCommand() {
     String command = 'STOP:1';
-    print('🛑 SENDING STOP: $command');
+    // print('🛑 SENDING STOP: $command');
 
     if (_connectedDeviceId != null) {
       _bleService.sendCommand(_connectedDeviceId!, command);
     } else {
-      print('❌ ERROR: No connected device ID!');
+      // print('❌ ERROR: No connected device ID!');
     }
   }
 

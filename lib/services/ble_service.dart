@@ -45,10 +45,10 @@ class BLEService {
         }
       }
 
-      print('Found ${devices.length} BLE devices total');
+      //print('Found ${devices.length} BLE devices total');
       return devices;
     } catch (e) {
-      print('BLE Scan Error: $e');
+      //print('BLE Scan Error: $e');
       return [];
     } finally {
       _isScanning = false;

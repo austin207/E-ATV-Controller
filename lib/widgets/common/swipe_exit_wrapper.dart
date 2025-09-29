@@ -43,8 +43,8 @@ class _SwipeExitWrapperState extends State<SwipeExitWrapper> {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: const [
+        content: const Row(
+          children: [
             Icon(Icons.swipe_up, color: Colors.orange),
             SizedBox(width: 8),
             Text(
@@ -67,8 +67,8 @@ class _SwipeExitWrapperState extends State<SwipeExitWrapper> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.grey[900],
-          title: Row(
-            children: const [
+          title: const Row(
+            children: [
               Icon(Icons.warning, color: Colors.red),
               SizedBox(width: 8),
               Text(

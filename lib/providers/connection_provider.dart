@@ -101,7 +101,7 @@ class ConnectionProvider extends ChangeNotifier {
       if (!isDemoMode && useBLE) {
         await _bleService.sendCommand(selected!.id, command);
       } else {
-        print('Demo Mode Command: $command');
+        //print('Demo Mode Command: $command');
       }
     }
   }
