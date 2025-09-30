@@ -134,7 +134,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
                                     icon: Icons.campaign,
                                     color: Colors.blue,
                                     onPressed: () {
-                                      print('Horn pressed!');
+                                      //print('Horn pressed!');
                                       if (connection.selected != null) {
                                         connection.sendCommand('HORN:1');
                                       }
