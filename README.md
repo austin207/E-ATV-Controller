@@ -1,6 +1,7 @@
 # RC Controller Flutter App
 
 A professional Flutter application for controlling RC vehicles via ESP32/ESP8266 microcontrollers using Bluetooth Low Energy (BLE) or WiFi connections.
+Download the app from here: 
 
 ![Flutter](https://img.shields.io/badge/Flutter-02569B?style=flat&logo=flutter&logoColor=white)
 ![Arduino](https://img.shields.io/badge/Arduino-00979D?style=flat&logo=Arduino&logoColor=white)
