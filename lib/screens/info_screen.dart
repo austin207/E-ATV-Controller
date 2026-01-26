@@ -95,7 +95,10 @@ class InfoScreen extends StatelessWidget {
                 label: const Text('Back to Connection'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ),
@@ -169,10 +172,7 @@ class InfoScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               description,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.white70,
-              ),
+              style: const TextStyle(fontSize: 14, color: Colors.white70),
             ),
             const SizedBox(height: 12),
             Container(
@@ -203,13 +203,28 @@ class InfoScreen extends StatelessWidget {
 
   String _getBLECode() {
     return '''
-    #include <BLEDevice.h>
+#include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
 
 // UUIDs
-#define SERVICE_UUID        "<YOUR SERVICE UUID>"
-#define CHARACTERISTIC_UUID "<YOUR CHARACTERISTIC UUID>"
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+// Motor Driver Pins (L298N or similar)
+#define MOTOR_LEFT_PWM    5    // Left motor speed (PWM)
+#define MOTOR_LEFT_DIR1   18   // Left motor direction pin 1
+#define MOTOR_LEFT_DIR2   19   // Left motor direction pin 2
+
+#define MOTOR_RIGHT_PWM   4    // Right motor speed (PWM)
+#define MOTOR_RIGHT_DIR1  3    // Right motor direction pin 1
+#define MOTOR_RIGHT_DIR2  2    // Right motor direction pin 2
+
+// PWM Configuration
+#define PWM_FREQ     5000      // PWM frequency
+#define PWM_RESOLUTION 8       // 8-bit resolution (0-255)
+#define PWM_CHANNEL_L  0       // PWM channel for left motor
+#define PWM_CHANNEL_R  1       // PWM channel for right motor
 
 // Forward declarations
 void processCommand(const String& command);
@@ -270,6 +285,21 @@ void setup() {
   BLEDevice::startAdvertising();
 
   Serial.println("E-ATV BLE server active - waiting for Flutter app...");
+
+  // Configure motor pins
+  pinMode(MOTOR_LEFT_DIR1, OUTPUT);
+  pinMode(MOTOR_LEFT_DIR2, OUTPUT);
+  pinMode(MOTOR_RIGHT_DIR1, OUTPUT);
+  pinMode(MOTOR_RIGHT_DIR2, OUTPUT);
+  
+  // Setup PWM channels
+  ledcSetup(PWM_CHANNEL_L, PWM_FREQ, PWM_RESOLUTION);
+  ledcSetup(PWM_CHANNEL_R, PWM_FREQ, PWM_RESOLUTION);
+  ledcAttachPin(MOTOR_LEFT_PWM, PWM_CHANNEL_L);
+  ledcAttachPin(MOTOR_RIGHT_PWM, PWM_CHANNEL_R);
+
+  // Initialize motors to stopped state
+  stopAllMotors();
 }
 
 void loop() {
@@ -331,14 +361,64 @@ void handleMovement(int up, int down, int left, int right, int speed, int boost)
     speed = min(100, int(speed * 1.2));
   }
   Serial.println("Motor logic executed with speed: " + String(speed));
-  // TODO: motor control code
+  // Convert percentage speed to PWM value (0-255)
+  int pwmSpeed = map(speed, 0, 100, 0, 255);
+  
+  // Calculate net movement
+  int forwardBackward = up - down;  // Net forward/backward (-100 to +100)
+  int leftRight = right - left;     // Net turning (-100 to +100)
+  
+  // Calculate individual motor speeds using differential steering
+  int leftMotorSpeed = forwardBackward + leftRight;   // Add turning component
+  int rightMotorSpeed = forwardBackward - leftRight;  // Subtract turning component
+  
+  // Constrain motor speeds to valid range
+  leftMotorSpeed = constrain(leftMotorSpeed, -100, 100);
+  rightMotorSpeed = constrain(rightMotorSpeed, -100, 100);
+  
+  // Apply base speed scaling
+  leftMotorSpeed = (leftMotorSpeed * pwmSpeed) / 100;
+  rightMotorSpeed = (rightMotorSpeed * pwmSpeed) / 100;
+  
+  // Control left motor
+  controlMotor(PWM_CHANNEL_L, MOTOR_LEFT_DIR1, MOTOR_LEFT_DIR2, leftMotorSpeed);
+  
+  // Control right motor  
+  controlMotor(PWM_CHANNEL_R, MOTOR_RIGHT_DIR1, MOTOR_RIGHT_DIR2, rightMotorSpeed);
+  
+  Serial.printf("Motors - Left: %d, Right: %d (Speed: %d%%)\n", 
+                leftMotorSpeed, rightMotorSpeed, speed);
+}
+
+void controlMotor(int pwmChannel, int dir1Pin, int dir2Pin, int speed) {
+  if (speed > 0) {
+    // Forward direction
+    digitalWrite(dir1Pin, HIGH);
+    digitalWrite(dir2Pin, LOW);
+    ledcWrite(pwmChannel, abs(speed));
+  } 
+  else if (speed < 0) {
+    // Reverse direction
+    digitalWrite(dir1Pin, LOW);
+    digitalWrite(dir2Pin, HIGH);
+    ledcWrite(pwmChannel, abs(speed));
+  } 
+  else {
+    // Stop motor
+    digitalWrite(dir1Pin, LOW);
+    digitalWrite(dir2Pin, LOW);
+    ledcWrite(pwmChannel, 0);
+  }
 }
 
 void stopAllMotors() {
   Serial.println("All motors stopped!");
-  // TODO: stop motors
+  controlMotor(PWM_CHANNEL_L, MOTOR_LEFT_DIR1, MOTOR_LEFT_DIR2, 0);
+  controlMotor(PWM_CHANNEL_R, MOTOR_RIGHT_DIR1, MOTOR_RIGHT_DIR2, 0);
+  Serial.println("All motors stopped!");
 }
-''';
+
+    ''';
   }
 
   String _getWiFiCode() {
